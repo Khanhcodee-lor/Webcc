@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Dark Control Panel</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css">
+
+</head>
+<body>
+  <!-- Authentication Container -->
+  <div class="auth-container" id="authContainer">
+    <div class="auth-box">
+      <!-- Login Form -->
+      <div id="loginForm">
+        <h2 class="auth-title">Welcome Back</h2>
+        <p class="auth-subtitle">Sign in to access your control panel</p>
+        
+        <div class="auth-error" id="loginError"></div>
+        
+        <form class="auth-form" id="loginFormElement">
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="text" id="loginEmail" placeholder="Enter your email" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" placeholder="Enter your password" required>
+          </div>
+          
+          <div class="auth-actions">
+            <button type="submit" class="btn btn-block">
+              <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+          </div>
+        </form>
+        
+        <div class="auth-toggle">
+          Don't have an account? <a id="showRegister">Register</a>
+        </div>
+      </div>
+      
+      <!-- Register Form -->
+      <div id="registerForm" class="hidden">
+        <h2 class="auth-title">Create Account</h2>
+        <p class="auth-subtitle">Set up your new control panel account</p>
+        
+        <div class="auth-error" id="registerError"></div>
+        
+        <form class="auth-form" id="registerFormElement">
+          <div class="form-group">
+            <label for="registerName">Full Name</label>
+            <input type="text" id="registerName" placeholder="Enter your full name" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="registerEmail">Email</label>
+            <input type="text" id="registerEmail" placeholder="Enter your email" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="registerPassword">Password</label>
+            <input type="password" id="registerPassword" placeholder="Create a password" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="registerConfirmPassword">Confirm Password</label>
+            <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" required>
+          </div>
+          
+          <div class="auth-actions">
+            <button type="submit" class="btn btn-block">
+              <i class="fas fa-user-plus"></i> Register
+            </button>
+          </div>
+        </form>
+        
+        <div class="auth-toggle">
+          Already have an account? <a id="showLogin">Sign In</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Container -->
+  <div class="app-container" id="appContainer">
+    <header>
+      <div class="container">
+        <div class="user-menu">
+          <div class="user-avatar" id="userAvatar">U</div>
+          <div class="dropdown-menu" id="dropdownMenu">
+            <div class="dropdown-item" id="userEmail"></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" id="logoutBtn">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </div>
+          </div>
+        </div>
+        <h1>ESP32 Dark Control Panel</h1>
+        <p>Monitor and control your IoT devices</p>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="dashboard">
+        <div class="card">
+          <i class="fas fa-thermometer-half card-icon"></i>
+          <div class="card-title">Temperature</div>
+          <div class="card-value">
+            <span id="temperature">--</span>
+            <span class="card-unit">°C</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <i class="fas fa-tint card-icon"></i>
+          <div class="card-title">Humidity</div>
+          <div class="card-value">
+            <span id="humidity">--</span>
+            <span class="card-unit">%</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <i class="fas fa-water card-icon"></i>
+          <div class="card-title">Water Level</div>
+          <div class="card-value" id="waterLevel">--</div>
+        </div>
+
+        <div class="card" id="wifiCard">
+          <i class="fas fa-wifi card-icon"></i>
+          <div class="card-title">WiFi Status</div>
+          <div class="card-value" id="wifiStatus">
+            <span>Disconnected</span>
+            <span class="status-badge disconnected">OFFLINE</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <i class="fas fa-door-open"></i>
+          Door Control
+        </div>
+        
+        <div class="card-value" id="doorStatus" style="text-align: center; margin-bottom: 1.5rem;">--</div>
+        
+        <div class="door-control">
+          <button id="openDoorBtn" class="btn btn-success">
+            <i class="fas fa-door-open"></i> Open Door
+          </button>
+          <button id="closeDoorBtn" class="btn btn-danger">
+            <i class="fas fa-door-closed"></i> Close Door
+          </button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <i class="fas fa-plug"></i>
+          Pump Control
+        </div>
+        
+        <div class="card-value" id="relayStatus" style="text-align: center; margin-bottom: 1.5rem;">--</div>
+        
+        <div class="relay-control">
+          <button id="turnOnRelayBtn" class="btn btn-success">
+            <i class="fas fa-power-off"></i> Turn On
+          </button>
+          <button id="turnOffRelayBtn" class="btn btn-danger">
+            <i class="fas fa-power-off"></i> Turn Off
+          </button>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="wifiConfigPanel">
+        <div class="panel-title">
+          <i class="fas fa-wifi"></i>
+          WiFi Configuration
+        </div>
+        
+        <form id="wifiForm">
+          <div class="form-group">
+            <label for="ssid">WiFi SSID</label>
+            <input type="text" id="ssid" placeholder="Enter WiFi network name" value="">
+          </div>
+          
+          <div class="form-group">
+            <label for="password">WiFi Password</label>
+            <input type="password" id="password" placeholder="Enter WiFi password" value="">
+          </div>
+          
+          <button type="submit" class="btn btn-block">
+            <i class="fas fa-sync-alt"></i> Update WiFi Settings
+          </button>
+        </form>
+        
+        <div class="device-info">
+          <div class="info-item">
+            <div class="info-label">Device ID</div>
+            <div class="info-value">ESP32-001</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Firmware Version</div>
+            <div class="info-value">v2.1.5</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Last Update</div>
+            <div class="info-value" id="lastUpdate">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+      // Firebase configuration
+      const firebaseConfig = {
+            apiKey: "AIzaSyC4z2Z2sxgj2KefnEpslZ8j-cppyH21X2I",
+            authDomain: "esp32-5e4fa.firebaseapp.com",
+            databaseURL: "https://esp32-5e4fa-default-rtdb.firebaseio.com",
+            projectId: "esp32-5e4fa",
+            storageBucket: "esp32-5e4fa.firebasestorage.app",
+            messagingSenderId: "305326609780",
+            appId: "1:305326609780:web:e77ec3d224fb95a5710821",
+            measurementId: "G-0E39D4DH31"
+        };
+        
+          // Initialize Firebase
+          firebase.initializeApp(firebaseConfig);
+          const database = firebase.database();
+          const auth = firebase.auth();
+      
+          // Authentication State Listener
+          auth.onAuthStateChanged((user) => {
+            if (user) {
+              // User is signed in
+              showApp(user);
+            } else {
+              // User is signed out
+              showAuth();
+            }
+          });
+      
+          // Show authentication forms
+          function showAuth() {
+            document.getElementById('authContainer').style.display = 'flex';
+            document.getElementById('appContainer').style.display = 'none';
+          }
+      
+          // Show application
+          function showApp(user) {
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            
+            // Set user info
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userAvatar').textContent = user.email.charAt(0).toUpperCase();
+            
+            // Initialize the app
+            initApp();
+          }
+      
+          // Login Form
+          document.getElementById('loginFormElement').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorElement = document.getElementById('loginError');
+            
+            auth.signInWithEmailAndPassword(email, password)
+              .then((userCredential) => {
+                // Signed in successfully
+                errorElement.style.display = 'none';
+              })
+              .catch((error) => {
+                // Handle errors
+                errorElement.textContent = error.message;
+                errorElement.style.display = 'block';
+              });
+          });
+      
+          // Register Form
+          document.getElementById('registerFormElement').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const errorElement = document.getElementById('registerError');
+            
+            // Validate passwords match
+            if (password !== confirmPassword) {
+              errorElement.textContent = "Passwords don't match";
+              errorElement.style.display = 'block';
+              return;
+            }
+            
+            auth.createUserWithEmailAndPassword(email, password)
+              .then((userCredential) => {
+                // Signed up successfully
+                errorElement.style.display = 'none';
+                
+                // Update user profile with name
+                return userCredential.user.updateProfile({
+                  displayName: name
+                });
+              })
+              .then(() => {
+                // Switch to login form after successful registration
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('loginEmail').value = email;
+                document.getElementById('loginPassword').value = password;
+              })
+              .catch((error) => {
+                // Handle errors
+                errorElement.textContent = error.message;
+                errorElement.style.display = 'block';
+              });
+          });
+      
+          // Toggle between login and register forms
+          document.getElementById('showRegister').addEventListener('click', () => {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+          });
+      
+          document.getElementById('showLogin').addEventListener('click', () => {
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+          });
+      
+          // Logout button
+          const logoutBtn = document.getElementById('logoutBtn');
+          if (logoutBtn) {
+              logoutBtn.addEventListener('click', () => {
+                  auth.signOut().then(() => {
+                      console.log('User signed out');
+                  }).catch((error) => {
+                      console.error('Sign out error:', error);
+                  });
+              });
+          }
+      
+      
+          // User menu toggle
+          document.getElementById('userAvatar').addEventListener('click', () => {
+            document.getElementById('dropdownMenu').classList.toggle('show');
+          });
+      
+          // Close dropdown when clicking outside
+          window.addEventListener('click', (e) => {
+            if (!e.target.matches('#userAvatar')) {
+              const dropdown = document.getElementById('dropdownMenu');
+              if (dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+              }
+            }
+          });
+      
+          // Initialize the application after login
+          function initApp() {
+            // Update elements from Firebase
+            function updateElement(path, elementId, formatter = (val) => val) {
+              firebase.database().ref(path).on('value', (snapshot) => {
+                const value = snapshot.val();
+                document.getElementById(elementId).innerHTML = formatter(value);
+                
+                // Update last update time
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+              });
+            }
+      
+            // Format values
+            const formatStatus = (value) => {
+              if (value === "On" || value === "Open") {
+                return `<span style="color: var(--success); font-weight: 600">${value}</span>`;
+              } else {
+                return `<span style="color: var(--danger); font-weight: 600">${value}</span>`;
+              }
+            };
+      
+            const formatWifiStatus = (value) => {
+              const badgeClass = value === "Connected" ? "connected" : "disconnected";
+              const badgeText = value === "Connected" ? "ONLINE" : "OFFLINE";
+              return `
+                <span>${value}</span>
+                <span class="status-badge ${badgeClass}">${badgeText}</span>
+              `;
+            };
+      
+            // Listen for data changes
+            updateElement('/DHT11/Temperature', 'temperature', val => val ? `${val}°C` : '--');
+            updateElement('/DHT11/Humidity', 'humidity', val => val ? `${val}%` : '--');
+            updateElement('/WaterSensor/Level', 'waterLevel', val => val || '--');
+            updateElement('/Door/Status', 'doorStatus', formatStatus);
+            updateElement('/Relay/Status', 'relayStatus', formatStatus);
+            updateElement('/WiFi/Status', 'wifiStatus', formatWifiStatus);
+      
+            // Handle door controls
+            document.getElementById('openDoorBtn').addEventListener('click', () => {
+              firebase.database().ref('/Door/Status').set("Open");
+            });
+      
+            document.getElementById('closeDoorBtn').addEventListener('click', () => {
+              firebase.database().ref('/Door/Status').set("Closed");
+            });
+      
+            // Handle relay controls
+            document.getElementById('turnOnRelayBtn').addEventListener('click', () => {
+              firebase.database().ref('/Relay/Status').set("On");
+            });
+      
+            document.getElementById('turnOffRelayBtn').addEventListener('click', () => {
+              firebase.database().ref('/Relay/Status').set("Off");
+            });
+      
+            // Handle WiFi form submission
+            document.getElementById('wifiForm').addEventListener('submit', (e) => {
+              e.preventDefault();
+              const ssid = document.getElementById('ssid').value;
+              const password = document.getElementById('password').value;
+              
+              // Update WiFi settings in Firebase
+              firebase.database().ref('/WiFi/SSID').set(ssid);
+              firebase.database().ref('/WiFi/Password').set(password);
+              
+              alert('WiFi settings updated! The device will attempt to reconnect.');
+            });
+      
+            // Toggle WiFi configuration panel
+            document.getElementById('wifiCard').addEventListener('click', () => {
+              const wifiPanel = document.getElementById('wifiConfigPanel');
+              wifiPanel.classList.toggle('hidden');
+              
+              // Load current WiFi settings when panel is shown
+              if (!wifiPanel.classList.contains('hidden')) {
+                firebase.database().ref('/WiFi/SSID').once('value').then((snapshot) => {
+                  const ssid = snapshot.val();
+                  if (ssid) document.getElementById('ssid').value = ssid;
+                });
+      
+                firebase.database().ref('/WiFi/Password').once('value').then((snapshot) => {
+                  const password = snapshot.val();
+                  if (password) document.getElementById('password').value = password;
+                });
+              }
+            });
+
+
+
+
+      
+            // Initial load of WiFi settings
+            firebase.database().ref('/WiFi/SSID').once('value').then((snapshot) => {
+              const ssid = snapshot.val();
+              if (ssid) document.getElementById('ssid').value = ssid;
+            });
+      
+            firebase.database().ref('/WiFi/Password').once('value').then((snapshot) => {
+              const password = snapshot.val();
+              if (password) document.getElementById('password').value = password;
+            });
+          }
+</script>
+</body>
+</html>
